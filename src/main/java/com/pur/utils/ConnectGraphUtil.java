@@ -60,7 +60,7 @@ public class ConnectGraphUtil {
         int y = parent.getY();
 
         int locX = x;
-        int locY = y + 150;
+        int locY = y + 200;
 
         int rightIndex = middle;
         Relation last = null;
@@ -144,7 +144,7 @@ public class ConnectGraphUtil {
             //偶数节点要按奇数个来算宽度
             leaves++;
         }
-        int width = leaves * 195 + (leaves - 1) * SPACE;
+        int width = leaves * 300 + (leaves - 1) * SPACE;
         return width;
     }
 
