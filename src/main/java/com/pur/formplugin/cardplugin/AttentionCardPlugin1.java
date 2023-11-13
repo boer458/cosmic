@@ -54,6 +54,8 @@ import kd.tmc.fs.common.helper.SettingMapperHelper;
 import kd.tmc.fs.formplugin.AttentionCardPlugin;
 import kd.tmc.fs.formplugin.common.DynamicFormPlugin;
 import org.apache.commons.lang.StringUtils;
+import kd.tmc.fs.formplugin.AttentionCardPlugin;
+import kd.tmc.cdm.formplugin.index.ExpiredWarnPlugin;
 
 public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickListener {
     private static Log logger = LogFactory.getLog(AttentionCardPlugin.class);
@@ -73,7 +75,7 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
 
     public void registerListener(EventObject e) {
         super.registerListener(e);
-        this.addClickListeners(new String[]{"tpv_refresh_btn", "tpv_lookupjournal_btn", "tpv_lookuptransaction_btn", "tpv_addaccountbank_btn", "closeup_btn", "tpv_refresh_btn", "open_btn"});
+        this.addClickListeners(new String[]{"tpv_refresh_btn", "tpv_lookupjournal_btn", "tpv_lookuptransaction_btn", "tpv_refreshall_btn", "tpv_addaccountbank_btn", "closeup_btn", "tpv_refresh_btn", "open_btn"});
         this.addClickListeners(new String[]{"tpv_add_pic", "tpv_add_label", "tpv_delete"});
         this.initF7();
         this.getView().getFormShowParameter().setListentimerElapsed(true);
@@ -81,7 +83,7 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
 
     //银行账户
     private void initF7() {
-        BasedataEdit acctBankF7 = (BasedataEdit) this.getControl("accountbankf7");
+        BasedataEdit acctBankF7 = (BasedataEdit) this.getControl("tpv_accountbankf7");
         if (acctBankF7 != null) {
             acctBankF7.addBeforeF7SelectListener((beforeF7SelectEvent) -> {
             });
@@ -183,8 +185,8 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
         DynamicObject currency = this.getDynamicObject("tpv_currency", rowIndex);
         String userIdStr = RequestContext.get().getUserId();
         Long userId = Long.valueOf(userIdStr);
-        QFilter acctBankFilter = new QFilter("tpv_accountbank", "=", acctBank.getPkValue());
-        QFilter currencyFilter = new QFilter("tpv_currency", "=", currency.getPkValue());
+        QFilter acctBankFilter = new QFilter("accountbank", "=", acctBank.getPkValue());
+        QFilter currencyFilter = new QFilter("currency", "=", currency.getPkValue());
         QFilter userFilter = new QFilter("user", "=", userId);
         DeleteServiceHelper.delete("cas_attentionsetting", new QFilter[]{userFilter, acctBankFilter, currencyFilter});
         this.getModel().deleteEntryRow("tpv_acctbankcardentry", rowIndex);
@@ -209,7 +211,7 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
             this.getView().setVisible(Boolean.TRUE, new String[]{"tpv_lastupdatetime"});
             this.getModel().setValue("tpv_lastupdatetime", new Date());
             String msg = ResManager.loadKDString("更新于", "AttentionCardPlugin_7", "fi-cas-formplugin", new Object[0]);
-            ((Label) this.getView().getControl("premsg")).setText(msg);
+            ((Label) this.getView().getControl("tpv_premsg")).setText(msg);
         }
     }
 
@@ -264,6 +266,7 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
 
     private void lookUpJournal() {
         int index = this.getModel().getEntryCurrentRowIndex("tpv_acctbankcardentry");
+        //银行账户
         DynamicObject acctBank = this.getDynamicObject("tpv_accountbank", index);
         Long orgId = acctBank.getLong("company.id");
         boolean hasViewRight = PermissionHelper.hasViewRight(orgId, "cas_bankjournal");
@@ -276,11 +279,11 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
             fsp.setFormId("cas_bankjournalformrpt");
             fsp.setCustomParam("setDefaultFilters", Boolean.TRUE);
             fsp.setCustomParam("org", orgId);
-            fsp.setCustomParam("tpv_accountBank", acctBank.getPkValue());
-            fsp.setCustomParam("tpv_currency", acctBank.getLong("defaultcurrency.id"));
+            fsp.setCustomParam("accountBank", acctBank.getPkValue());
+            fsp.setCustomParam("currency", acctBank.getLong("defaultcurrency.id"));
             fsp.setCustomParam("datatype", 1);
-            fsp.setCustomParam("beginperiod", period.getPkValue());
-            fsp.setCustomParam("endperiod", period.getPkValue());
+            //  fsp.setCustomParam("beginperiod", period.getPkValue());
+            //  fsp.setCustomParam("endperiod", period.getPkValue());
             OpenStyle openStyle = new OpenStyle();
             openStyle.setShowType(ShowType.MainNewTabPage);
             fsp.setOpenStyle(openStyle);
@@ -316,10 +319,9 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
     }
 
     private void showAddAcctBankView() {
-        BasedataEdit acctBankF7 = (BasedataEdit) this.getControl("accountbankf7");
-        if (acctBankF7 != null) {
-            acctBankF7.click();
-        }
+        BasedataEdit acctBankF7 = (BasedataEdit) this.getControl("tpv_accountbankf7");
+        acctBankF7.click();
+
 
     }
 
@@ -329,7 +331,7 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
         ChangeData[] changeData = e.getChangeSet();
         Object newValue = changeData[0].getNewValue();
         switch (key) {
-            case "accountbankf7":
+            case "tpv_accountbankf7":
                 this.acctBankChanged(newValue);
             default:
         }
@@ -347,7 +349,7 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
                 this.saveAttentionSetting(acctBank);
             }
 
-            this.getModel().setValue("accountbankf7", new Object[0]);
+            this.getModel().setValue("tpv_accountbankf7", new Object[0]);
         }
     }
 
@@ -374,7 +376,9 @@ public class AttentionCardPlugin1 extends DynamicFormPlugin implements ClickList
                     String bankOrgName;
                     if (bank != null) {
                         acctBankNumber = SettingMapperHelper.getValue("finorgimg", bank.getString("bank_cate"));
-                        String bkImg = acctBankNumber != null ? acctBankNumber : "/images/pc/cardbackground/card_otherbank_280_150.png";
+                        String bkImg = acctBankNumber != null ? acctBankNumber :
+                                //       "/com/pur/images/card_otherbank_280_1501.png";
+                                "/images/pc/cardbackground/card_guangdabank_280_150.png";
                         bankOrgName = UrlService.getDomainContextUrl();
                         if (bankOrgName.endsWith("/")) {
                             bankOrgName = bankOrgName.substring(0, bankOrgName.length() - 1);
